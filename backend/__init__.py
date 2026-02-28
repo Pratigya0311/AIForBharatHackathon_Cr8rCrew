@@ -1,0 +1,3 @@
+"""
+TrendScribe Backend
+"""
