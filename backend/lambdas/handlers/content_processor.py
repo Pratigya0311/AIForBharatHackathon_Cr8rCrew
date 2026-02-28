@@ -11,6 +11,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from lambdas.embeddings import extract_style_dna, generate_embedding
+from lambdas.db.dynamo_client import save_creator_profile
+from lambdas.db.s3_client import upload_content
 
 
 def lambda_handler(event, context):
@@ -62,13 +64,37 @@ def lambda_handler(event, context):
         # Generate embedding
         embedding = generate_embedding(content_text)
         
+        # Save to DynamoDB and S3 (on best-effort basis)
+        db_saved = False
+        try:
+            # Save creator profile to DynamoDB
+            db_result = save_creator_profile(
+                userId=user_id,
+                style_dna=style_dna,
+                embedding=embedding,
+                niche=style_dna.get('niche', 'Unknown'),
+                language='en'
+            )
+            
+            # Upload content sample to S3
+            if db_result['success']:
+                content_id = f"content_{int(__import__('time').time())}"
+                s3_result = upload_content(user_id, content_id, content_text)
+                db_saved = s3_result['success']
+            else:
+                db_saved = False
+        except Exception as db_error:
+            # DB save failed, but return script anyway
+            db_saved = False
+        
         # Return success
         return {
             'statusCode': 200,
             'body': json.dumps({
                 'userId': user_id,
                 'style_dna': style_dna,
-                'embedding': embedding
+                'embedding': embedding,
+                'db_saved': db_saved
             })
         }
     

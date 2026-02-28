@@ -12,6 +12,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from lambdas.script_generator import generate_youtube_script, generate_reel_script, score_hook
+from lambdas.db.dynamo_client import save_script, get_creator_profile
+from lambdas.db.s3_client import save_script as save_script_s3
 
 
 def lambda_handler(event, context):
@@ -88,11 +90,33 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'format must be "youtube", "reel", or "both"'})
             }
         
+        # Fetch creator profile from DynamoDB and merge (on best-effort basis)
+        try:
+            db_profile_result = get_creator_profile(user_id)
+            if db_profile_result['success']:
+                db_profile = db_profile_result['data']
+                # Merge profiles: DB takes priority for style_dna and embedding
+                if 'style_dna' in db_profile and db_profile['style_dna']:
+                    import json as json_module
+                    db_style_dna = json_module.loads(db_profile['style_dna']) if isinstance(db_profile['style_dna'], str) else db_profile['style_dna']
+                    creator_profile['style_dna'] = db_style_dna
+                if 'embedding' in db_profile and db_profile['embedding']:
+                    creator_profile['embedding'] = db_profile['embedding']
+                if 'niche' in db_profile:
+                    creator_profile['niche'] = db_profile['niche']
+                if 'tone' not in creator_profile and db_profile.get('tone'):
+                    creator_profile['tone'] = db_profile['tone']
+        except Exception:
+            # DB fetch failed, use request profile only
+            pass
+        
         # Prepare response
+        script_id = f"script_{user_id}_{int(__import__('time').time())}"
         response_body = {
             'userId': user_id,
             'format': format_type,
-            'language': language
+            'language': language,
+            'scriptId': script_id
         }
         
         # Generate YouTube script if requested
@@ -114,6 +138,32 @@ def lambda_handler(event, context):
             reel_script['hook_score'] = hook_score
             
             response_body['reel_script'] = reel_script
+        
+        # Save scripts to DynamoDB and S3 (on best-effort basis)
+        try:
+            hook_scores = {}
+            if 'youtube_script' in response_body:
+                hook_scores['youtube'] = response_body['youtube_script'].get('hook_score')
+            if 'reel_script' in response_body:
+                hook_scores['reel'] = response_body['reel_script'].get('hook_score')
+            
+            # Save to DynamoDB
+            db_result = save_script(
+                userId=user_id,
+                trend=trend,
+                format_type=format_type,
+                youtube_script=response_body.get('youtube_script'),
+                reel_script=response_body.get('reel_script'),
+                hook_scores=hook_scores,
+                language=language
+            )
+            
+            # Save full JSON backup to S3
+            if db_result['success']:
+                s3_result = save_script_s3(user_id, script_id, response_body)
+        except Exception:
+            # DB save failed, but return scripts anyway
+            pass
         
         # Return success
         return {

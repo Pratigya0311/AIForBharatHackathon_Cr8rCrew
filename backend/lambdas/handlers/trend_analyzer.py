@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from lambdas.embeddings import match_trend_to_creator, generate_embedding
+from lambdas.db.dynamo_client import get_all_trends
 
 
 def lambda_handler(event, context):
@@ -78,6 +79,25 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': json.dumps({'error': 'trends_list is required and must be an array'})
             }
+        
+        # Fetch trends from DynamoDB (on best-effort basis)
+        try:
+            db_trends_result = get_all_trends(limit=50)
+            if db_trends_result['success']:
+                db_trends = db_trends_result['data']
+                # Convert DB trend format to request format
+                for db_trend in db_trends:
+                    # Check if trend already in request list
+                    trend_exists = any(t.get('trendId') == db_trend.get('trendId') for t in trends_list)
+                    if not trend_exists:
+                        trends_list.append({
+                            'trendId': db_trend.get('trendId'),
+                            'title': db_trend.get('title'),
+                            'description': db_trend.get('description')
+                        })
+        except Exception:
+            # DB fetch failed, continue with request trends only
+            pass
         
         # Rank trends by relevance
         ranked_trends = []
