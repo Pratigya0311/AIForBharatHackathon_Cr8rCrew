@@ -26,8 +26,18 @@ def mock_youtube_script():
     """Mock YouTube script."""
     return {
         "title": "How Indian Creators Are Making 10x More With AI",
+        "viral_title_ideas": [
+            "I 10x'd My YouTube Growth With This AI Tool",
+            "The AI Setup Every Indian Creator Needs in 2026",
+            "Stop Making Content Manually (Do This Instead)"
+        ],
+        "thumbnail_ideas": [
+            "Split screen: Sad creator at desk vs Creator relaxing on beach. Text: '10x FASTER'",
+            "Close up of face with neon AI glowing brain. Text: 'MY SECRET WEAPON'",
+            "Graph zooming up exponentially with Claude logo. Text: 'STOP WRITING'"
+        ],
         "hook": "Imagine producing content 10x faster while earning 10x more.",
-        "section_1": "First, let's understand what's happening in the creator economy.",
+        "section_1": "First, let's understand what's happening in the creator economy. [VISUAL: Show B-Roll of creators looking stressed]",
         "section_2": "Here's the real secret that separates winners from the rest.",
         "section_3": "Now let me show you the exact process I use every day.",
         "conclusion": "The opportunity is absolutely massive right now.",
@@ -39,8 +49,13 @@ def mock_reel_script():
     """Mock Reel script."""
     return {
         "title": "How AI Can 10x Your Content Production",
-        "hook": "Most creators are still manually creating content but the smart ones use AI.",
-        "body": "ChatGPT and Claude aren't just tools, they're your secret weapons.",
+        "viral_title_ideas": [
+            "My Secret AI Creator Stack 🤫",
+            "10x Your Content in 30 Seconds",
+            "Why Indian Creators Are Exploding Right Now"
+        ],
+        "hook": "Most creators are still manually creating content but the smart ones use AI. [VISUAL: TEXT ON SCREEN 'SMART CREATORS']",
+        "body": "ChatGPT and Claude aren't just tools, they're your secret weapons. [VISUAL: Show screen recording of prompt]",
         "cta": "Watch the full video - link in bio.",
         "hashtags": ["#AIForCreators", "#GenAI2026", "#ContentCreation"]
     }
@@ -68,7 +83,7 @@ def main():
     print("FEATURE TEST: SCRIPT GENERATION")
     print("YouTube + Reel Scripts with Automatic Hook Scoring")
     print("="*80)
-    print("\nCoverage: Phase 1 (generation) → Phase 2 (handler) → Phase 3 (DB) → Phase 3b (integration)")
+    print("\nCoverage: Phase 1 (generation) -> Phase 2 (handler) -> Phase 3 (DB) -> Phase 3b (integration)")
     print("Mode: Mocked AWS services (no credentials needed)")
     print("\n" + ("="*80))
     

@@ -7,13 +7,15 @@ import json
 from .bedrock_client import call_claude
 
 
-def generate_youtube_script(creator_profile, trend):
+def generate_youtube_script(creator_profile, trend, language_code="en", options=None):
     """
-    Generate a long-form YouTube script (8-12 minutes) based on creator's profile and trend.
+    Generate a long-form YouTube script based on creator's profile, trend, and customizations.
     
     Args:
         creator_profile (dict): Creator's Style DNA with keys: niche, tone, style, key_phrases, target_audience
         trend (dict): Trend data with keys: title, description, context
+        language_code (str): Language code (e.g. 'en', 'hi', 'ta')
+        options (dict): Customization options: length, tone, structure
     
     Returns:
         dict: Script structure with keys:
@@ -43,17 +45,23 @@ TRENDING TOPIC:
 - Description: {trend_description}
 - Context: {trend_context}
 
-TASK: Write a YouTube video script (8-12 minutes) that:
+TARGET LANGUAGE: {target_language}
+
+TASK: Write a YouTube video script ({video_length}) that:
 1. Opens with a compelling 30-second hook
-2. Has 3 main sections (each 2-3 minutes)
-3. Ends with a strong conclusion and CTA
-4. Uses the creator's actual voice and tone throughout
-5. Includes specific examples relevant to the trend
-6. Sounds human and natural, NOT like AI
+2. Is structured as a "{video_structure}" video
+3. Has main sections (adjusted for {video_length})
+4. Ends with a strong conclusion and CTA
+5. Uses the creator's actual voice and tone throughout ({target_tone})
+6. Includes specific examples relevant to the trend
+7. Sounds human and natural, NOT like AI
+8. Integrates [VISUAL: ...] cues throughout the script for B-roll, Text-on-Screen, and Editor notes
 
 Format your response as a JSON object with these EXACT keys:
 {{
     "title": "Video title here",
+    "viral_title_ideas": ["Clickable Title 1", "Curiosity Title 2", "SEO-optimized Title 3"],
+    "thumbnail_ideas": ["Visual description + Text for Thumbnail 1", "Thumbnail idea 2", "Thumbnail idea 3"],
     "hook": "30-second hook...",
     "section_1": "First section content...",
     "section_2": "Second section content...",
@@ -64,15 +72,27 @@ Format your response as a JSON object with these EXACT keys:
 
 Return ONLY the JSON object, no other text."""
         
+        lang_map = {'en': 'English', 'hi': 'Hindi / Hinglish (natural spoken)', 'ta': 'Tamil', 'te': 'Telugu', 'kn': 'Kannada', 'mr': 'Marathi'}
+        target_lang = lang_map.get(language_code.lower(), 'English')
+        
+        options = options or {}
+        target_tone = options.get('tone', creator_profile.get('tone', 'Conversational'))
+        video_length = options.get('length', '8-12 minutes')
+        video_structure = options.get('structure', 'educational')
+        
         prompt = prompt_template.format(
             niche=creator_profile.get('niche', 'Not specified'),
-            tone=creator_profile.get('tone', 'Conversational'),
+            tone=target_tone,
             style=creator_profile.get('style', 'Narrative-driven'),
             key_phrases=', '.join(creator_profile.get('key_phrases', [])),
             target_audience=creator_profile.get('target_audience', 'Tech enthusiasts'),
             trend_title=trend.get('title', 'New Trend'),
             trend_description=trend.get('description', ''),
-            trend_context=trend.get('context', '')
+            trend_context=trend.get('context', ''),
+            target_language=target_lang,
+            video_length=video_length,
+            video_structure=video_structure,
+            target_tone=target_tone
         )
         
         response_text = call_claude(prompt, max_tokens=3000)
@@ -85,13 +105,15 @@ Return ONLY the JSON object, no other text."""
         raise Exception(f"YouTube script generation failed: {str(e)}")
 
 
-def generate_reel_script(creator_profile, trend):
+def generate_reel_script(creator_profile, trend, language_code="en", options=None):
     """
-    Generate a short-form Reel/Instagram script (30-60 seconds) based on creator's profile and trend.
+    Generate a short-form Reel/Instagram script based on creator's profile, trend, and customizations.
     
     Args:
         creator_profile (dict): Creator's Style DNA with keys: niche, tone, style, key_phrases, target_audience
         trend (dict): Trend data with keys: title, description, context
+        language_code (str): Language code (e.g. 'en', 'hi', 'ta')
+        options (dict): Customization options: length, tone, structure
     
     Returns:
         dict: Reel script structure with keys:
@@ -118,17 +140,21 @@ TRENDING TOPIC:
 - Title: {trend_title}
 - Description: {trend_description}
 
-TASK: Write a Reel/Instagram Short script (30-60 seconds) that:
+TARGET LANGUAGE: {target_language}
+
+TASK: Write a Reel/Instagram Short script ({video_length}) that:
 1. Starts with a HOOK that makes people stop scrolling (first 3 seconds are CRITICAL)
-2. Delivers value or entertainment quickly
-3. Uses the creator's unique voice
+2. Is structured as a "{video_structure}" video
+3. Uses the creator's requested tone ({target_tone})
 4. Ends with a CTA that drives engagement or links to full video
 5. Includes 5 relevant hashtags
 6. Is punchy, memorable, and shareable
+7. Integrates [VISUAL: ...] cues (e.g. TEXT ON SCREEN, POP-UP GRAPHICS, B-ROLL) directly into the script body
 
 Format your response as a JSON object with these EXACT keys:
 {{
     "title": "Reel title/main hook",
+    "viral_title_ideas": ["Viral Title 1", "Curiosity Title 2", "Shareable Title 3"],
     "hook": "First 3 seconds (the stopper)...",
     "body": "Main content (15-20 sec)...",
     "cta": "Call-to-action to drive engagement...",
@@ -137,14 +163,26 @@ Format your response as a JSON object with these EXACT keys:
 
 Return ONLY the JSON object, no other text."""
         
+        lang_map = {'en': 'English', 'hi': 'Hindi / Hinglish (natural spoken)', 'ta': 'Tamil', 'te': 'Telugu', 'kn': 'Kannada', 'mr': 'Marathi'}
+        target_lang = lang_map.get(language_code.lower(), 'English')
+        
+        options = options or {}
+        target_tone = options.get('tone', creator_profile.get('tone', 'Conversational'))
+        video_length = options.get('length', '30-60 seconds')
+        video_structure = options.get('structure', 'entertainment/value-driven')
+
         prompt = prompt_template.format(
             niche=creator_profile.get('niche', 'Not specified'),
-            tone=creator_profile.get('tone', 'Conversational'),
+            tone=target_tone,
             style=creator_profile.get('style', 'Quick-paced'),
             key_phrases=', '.join(creator_profile.get('key_phrases', [])),
             target_audience=creator_profile.get('target_audience', 'Tech enthusiasts'),
             trend_title=trend.get('title', 'New Trend'),
-            trend_description=trend.get('description', '')
+            trend_description=trend.get('description', ''),
+            target_language=target_lang,
+            video_length=video_length,
+            video_structure=video_structure,
+            target_tone=target_tone
         )
         
         response_text = call_claude(prompt, max_tokens=1000)

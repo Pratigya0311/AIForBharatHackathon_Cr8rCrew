@@ -28,6 +28,15 @@ def mock_embedding():
     return [random.uniform(0, 1) for _ in range(1536)]
 
 
+def mock_predict_trajectory():
+    """Mock the Claude AI predictive trend trajectory response."""
+    return {
+        'trajectory': 'Rising',
+        'novelty_score': 85,
+        'forecast_reason': 'This trend is just starting to gain traction in early-adopter circles.'
+    }
+
+
 # ============================================================================
 # TEST EXECUTION
 # ============================================================================
@@ -38,17 +47,19 @@ def main():
     print("FEATURE TEST: TREND DISCOVERY")
     print("Trend Analysis, Ranking, and Storage with TTL")
     print("="*80)
-    print("\nCoverage: Phase 1 (matching) → Phase 2 (handler) → Phase 3 (DB + TTL) → Phase 3b (integration)")
+    print("\nCoverage: Phase 1 (matching) -> Phase 2 (handler) -> Phase 3 (DB + TTL) -> Phase 3b (integration)")
     print("Mode: Mocked AWS services (no credentials needed)")
     print("\n" + ("="*80))
     
     try:
         with patch('lambdas.embeddings.match_trend_to_creator') as mock_match, \
-             patch('lambdas.embeddings.generate_embedding') as mock_embed:
+             patch('lambdas.embeddings.generate_embedding') as mock_embed, \
+             patch('lambdas.handlers.trend_analyzer.predict_trend_trajectory') as mock_traj:
             
             # Configure mocks
             mock_match.return_value = {'relevance_score': 0.75, 'is_relevant': True}
             mock_embed.return_value = mock_embedding()
+            mock_traj.return_value = mock_predict_trajectory()
             
             # Import handler after mocking
             from lambdas.handlers.trend_analyzer import lambda_handler as trend_analyzer
@@ -84,9 +95,16 @@ def main():
             assert len(body['ranked_trends']) > 0
             assert all('relevance_score' in t for t in body['ranked_trends'])
             
-            print("[PASS] Match Trend to Creator Style")
+            # Verify AI Novelty Feature
+            assert all('trajectory' in t for t in body['ranked_trends'])
+            assert all('novelty_score' in t for t in body['ranked_trends'])
+            assert body['ranked_trends'][0]['trajectory'] == 'Rising'
+            assert body['ranked_trends'][0]['novelty_score'] == 85
+            
+            print("[PASS] Match Trend to Creator Style & Predict Trajectory (Novelty)")
             print(f"  - Matched {len(body['ranked_trends'])} trends")
             print(f"  - Relevance scores calculated")
+            print(f"  - AI trajectories attached ('Rising', 'Peaking', or 'Falling')")
             print(f"  - Ranked by semantic similarity")
             
             # ====================================================================
@@ -101,7 +119,7 @@ def main():
             print("[PASS] Trend Ranking by Relevance")
             print(f"  - Top trend: {ranked[0]['title']} ({ranked[0]['relevance_score']:.3f})")
             for i, trend in enumerate(ranked[:3], 1):
-                print(f"    {i}. {trend['title']}: {trend['relevance_score']:.3f}")
+                print(f"    {i}. {trend['title']}: {trend['relevance_score']:.3f} | Forecast: {trend['trajectory']}")
             
             # ====================================================================
             # TEST 3: Store Trends with 48-Hour TTL

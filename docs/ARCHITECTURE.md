@@ -28,11 +28,11 @@ The system spans three layers: core AI functions, API handlers, and cloud infras
 
 ### Layer 1: Core AI Functions (Phase 1)
 
-**File: backend/lambdas/bedrock_client.py (80 lines)**
+**File: backend/lambdas/bedrock_client.py**
 - `call_claude(prompt)` - Sends requests to Claude 3 Sonnet for text generation
 - `call_titan(text)` - Generates 1536-dimensional embeddings for semantic analysis
 
-**File: backend/lambdas/embeddings.py (153 lines)**
+**File: backend/lambdas/embeddings.py**
 - `generate_embedding(text)` - Converts text to vector representation
 - `cosine_similarity(vec1, vec2)` - Computes similarity between two embeddings (0-1 scale)
 - `extract_style_dna(creator_content)` - Analyzes creator's past content to determine:
@@ -42,34 +42,36 @@ The system spans three layers: core AI functions, API handlers, and cloud infras
   - Key phrases and speaking patterns
 - `match_trend_to_creator(trend, creator_profile)` - Checks semantic fit between trending topic and creator's niche
 
-**File: backend/lambdas/script_generator.py (221 lines)**
-- `generate_youtube_script(trend, creator_profile)` - Creates 8-12 minute long-form script
-- `generate_reel_script(trend, creator_profile)` - Creates 30-60 second short-form script
-- `score_hook(hook_text)` - Evaluates hook strength (1-10) and suggests 3 alternatives
+**File: backend/lambdas/script_generator.py**
+- `generate_youtube_script(creator_profile, trend, language_code, options)` - Creates long-form script with custom length, tone, and structure
+- `generate_reel_script(creator_profile, trend, language_code, options)` - Creates short-form script with custom length, tone, and structure
+- `score_hook(hook_text, niche)` - Evaluates hook strength (1-10) and suggests 3 alternatives
 
 ### Layer 2: API Handlers (Phase 2)
 
 Three Lambda functions expose the core AI through REST endpoints.
 
-**File: backend/lambdas/content_processor.py (106 lines)**
+**File: backend/lambdas/content_processor.py**
 Purpose: Extract and store creator profile
 - Input: Creator content sample (blog post, transcript, video transcript)
 - Process: Uses embeddings.extract_style_dna()
 - Output: Style DNA, embedding, profile object
 - Storage: Saves to DynamoDB CreatorProfiles table + S3 content bucket
 
-**File: backend/lambdas/trend_analyzer.py (176 lines)**
-Purpose: Match and rank trends for a creator
-- Input: Creator ID, list of trends to analyze
-- Process: Uses embeddings.match_trend_to_creator() for each trend
-- Output: Ranked list by relevance score (highest first)
+**File: backend/lambdas/trend_analyzer.py**
+Purpose: Match, rank, and forecast trends for a creator
+- Input: Creator ID, creator embedding, list of trends to analyze
+- Process: 
+  - Uses `embeddings.match_trend_to_creator()` for relevance
+  - Uses `predict_trend_trajectory()` via Claude to forecast lifecycle (Rising/Peaking/Falling) and Novelty Score
+- Output: Ranked list with relevance score, trajectory, novelty score, and forecast reason
 - Storage: Saves to DynamoDB Trends table with 48-hour TTL for auto-cleanup
 
-**File: backend/lambdas/script_generator_handler.py (223 lines)**
-Purpose: Generate scripts in requested format(s)
-- Input: Creator ID, trend, format (youtube/reel/both), optional custom hook
-- Process: Fetches creator profile, generates script(s), scores hooks
-- Output: Complete script(s) with hook scores
+**File: backend/lambdas/script_generator_handler.py**
+Purpose: Generate scripts in requested format(s) with customizations
+- Input: Creator ID, trend, creator_profile, format (youtube/reel/both), language, options (length, tone, structure)
+- Process: Fetches creator profile, generates native language script(s) with custom options, scores hooks
+- Output: Complete script(s) featuring viral title ideas, thumbnail ideas, visual cues, and hook scores
 - Storage: Saves to DynamoDB Scripts table + S3 as JSON backup
 - Returns: scriptId and full content
 
@@ -77,7 +79,7 @@ All handlers include error handling that returns results even if database operat
 
 ### Layer 3: Data Persistence (Phase 3)
 
-**File: backend/infrastructure/dynamo_client.py (395 lines)**
+**File: backend/infrastructure/dynamo_client.py**
 DynamoDB operations with two modes:
 - MOCK_MODE='true' for testing (no AWS credentials needed)
 - Production mode for live deployment
@@ -107,7 +109,7 @@ Table: Trends
 - Fields: trend_name, relevance_score, embedding, trending_score, ttl (48 hours)
 - Purpose: Caches analyzed trends with auto-expiration
 
-**File: backend/infrastructure/s3_client.py (247 lines)**
+**File: backend/infrastructure/s3_client.py**
 File storage operations matching DynamoDB modes:
 - MOCK_MODE for testing
 - Production for live deployment
@@ -130,7 +132,7 @@ users/
 
 Supports versioning and multiple content samples per creator.
 
-**File: backend/infrastructure/cdk_stack.py (450+ lines)**
+**File: backend/infrastructure/cdk_stack.py**
 Infrastructure definitions:
 - DynamoDB tables (on-demand pricing, TTL enabled)
 - S3 bucket (versioning enabled, no public access)
@@ -171,7 +173,7 @@ Handlers now save and fetch from storage:
 
 Replaced phase-based tests with feature-based organization. Each test file covers one user-facing feature across all technical layers (Phase 1-3b).
 
-**File: backend/tests/test_creator_profiles.py (5 tests)**
+**File: backend/tests/test_creator_profiles.py**
 1. Extract Style DNA from creator content
 2. Generate 1536-dimensional embeddings
 3. Save creator profile to DynamoDB
@@ -180,7 +182,7 @@ Replaced phase-based tests with feature-based organization. Each test file cover
 
 Validates: Content processing layer, embedding generation, profile storage and retrieval.
 
-**File: backend/tests/test_trend_discovery.py (5 tests)**
+**File: backend/tests/test_trend_discovery.py**
 1. Match trend to creator style using semantic similarity
 2. Rank trends by relevance score (descending order)
 3. Store trends with 48-hour TTL
@@ -189,7 +191,7 @@ Validates: Content processing layer, embedding generation, profile storage and r
 
 Validates: Trend matching, ranking, storage with auto-expiration, DB operations.
 
-**File: backend/tests/test_script_generation.py (5 tests)**
+**File: backend/tests/test_script_generation.py**
 1. Generate YouTube long-form script
 2. Generate Reel short-form script
 3. Generate both YouTube and Reel simultaneously
@@ -198,7 +200,7 @@ Validates: Trend matching, ranking, storage with auto-expiration, DB operations.
 
 Validates: Script generation for both formats, database storage, hook scoring accuracy.
 
-**File: backend/tests/test_content_management.py (5 tests)**
+**File: backend/tests/test_content_management.py**
 1. Upload creator content sample to S3
 2. Retrieve creator content from S3
 3. Save generated script to S3 as JSON
@@ -207,7 +209,7 @@ Validates: Script generation for both formats, database storage, hook scoring ac
 
 Validates: S3 operations, content/script storage, file isolation by userId.
 
-**File: backend/tests/test_end_to_end_workflow.py (5 tests)**
+**File: backend/tests/test_end_to_end_workflow.py**
 1. Creator onboarding (upload content)
 2. Discover relevant trends
 3. Generate YouTube script
@@ -216,7 +218,7 @@ Validates: S3 operations, content/script storage, file isolation by userId.
 
 Validates: Full user journey from onboarding through script generation, cross-feature integration.
 
-**Test Results:** 25/25 passing (5 tests × 5 files)
+**Test Results:** Fully passing across all test files
 **Mode:** All tests use mocked AWS services (no credentials needed)
 
 ## User Journey
@@ -275,6 +277,16 @@ backend/
 - Titan Embeddings V1 generates 1536-dimensional vectors
 - Cosine similarity used to match trends (0 = opposite, 1 = identical)
 - Anything above 0.5 considered relevant match
+
+**Predictive Trend Forecasting (Novelty):**
+- Uses Claude 3 to act as a Trend Lifecycle Analyst
+- Predicts trend trajectory (`Rising`, `Peaking`, `Falling`) based on creator niche
+- Generates a `novelty_score` (1-100) indicating freshness vs. saturation
+
+**Script Generation & Customization:**
+- Generates comprehensive output including visual cues (`[VISUAL: ...]`), viral titles, and thumbnail ideas
+- Native language support (English, Hindi, Tamil, Telugu, Kannada, Marathi)
+- Exposes `options` for creators to override generated length, tone, and video structure
 
 **Hook Scoring:**
 - Automatic scoring on all generated scripts (1-10 scale)

@@ -36,7 +36,12 @@ def lambda_handler(event, context):
             "target_audience": "string"
         },
         "format": "youtube" | "reel" | "both",
-        "language": "en" | "hi" | "ta" | "te" | "kn" (optional, default: "en")
+        "language": "en" | "hi" | "ta" | "te" | "kn" (optional, default: "en"),
+        "options": {
+            "length": "string (e.g., '5-8 minutes')",
+            "tone": "string (e.g., 'humorous', 'professional')",
+            "structure": "string (e.g., 'tutorial', 'review')"
+        }
     }
     
     Returns:
@@ -64,6 +69,7 @@ def lambda_handler(event, context):
         creator_profile = body.get('creator_profile', {})
         format_type = body.get('format', 'youtube')
         language = body.get('language', 'en')
+        options = body.get('options', {})
         
         # Validate inputs
         if not user_id:
@@ -121,7 +127,7 @@ def lambda_handler(event, context):
         
         # Generate YouTube script if requested
         if format_type in ['youtube', 'both']:
-            youtube_script = generate_youtube_script(creator_profile, trend)
+            youtube_script = generate_youtube_script(creator_profile, trend, language, options)
             
             # Score the hook
             hook_score = score_hook(youtube_script['hook'], creator_profile['niche'])
@@ -131,7 +137,7 @@ def lambda_handler(event, context):
         
         # Generate Reel script if requested
         if format_type in ['reel', 'both']:
-            reel_script = generate_reel_script(creator_profile, trend)
+            reel_script = generate_reel_script(creator_profile, trend, language, options)
             
             # Score the hook
             hook_score = score_hook(reel_script['hook'], creator_profile['niche'])
@@ -178,6 +184,7 @@ def lambda_handler(event, context):
         }
     
     except Exception as e:
+        print(f"ERROR: {e}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': f'Script generation failed: {str(e)}'})
@@ -201,7 +208,12 @@ if __name__ == "__main__":
             'target_audience': 'Indian small business owners and creators'
         },
         'format': 'both',
-        'language': 'en'
+        'language': 'en',
+        'options': {
+            'length': 'short and punchy',
+            'tone': 'highly enthusiastic',
+            'structure': 'educational tutorial'
+        }
     }
     
     result = lambda_handler(test_event, None)

@@ -26,6 +26,15 @@ def mock_embedding():
     return [random.uniform(0, 1) for _ in range(1536)]
 
 
+def mock_predict_trajectory():
+    """Mock the Claude AI predictive trend trajectory response."""
+    return {
+        'trajectory': 'Rising',
+        'novelty_score': 85,
+        'forecast_reason': 'This trend is just starting to gain traction in early-adopter circles.'
+    }
+
+
 def mock_style_dna():
     """Mock Style DNA response."""
     return {
@@ -78,7 +87,7 @@ def main():
     """Execute end-to-end workflow tests."""
     print("\n" + ("="*80))
     print("FEATURE TEST: END-TO-END WORKFLOW")
-    print("Complete User Journey: Upload → Analyze → Generate")
+    print("Complete User Journey: Upload -> Analyze -> Generate")
     print("="*80)
     print("\nCoverage: All features integrated (Phase 1-3b)")
     print("Mode: Mocked AWS services (test automation)")
@@ -88,6 +97,7 @@ def main():
         with patch('lambdas.embeddings.extract_style_dna') as mock_extract, \
              patch('lambdas.embeddings.generate_embedding') as mock_embed, \
              patch('lambdas.embeddings.match_trend_to_creator') as mock_match, \
+             patch('lambdas.handlers.trend_analyzer.predict_trend_trajectory') as mock_traj, \
              patch('lambdas.script_generator.generate_youtube_script') as mock_yt, \
              patch('lambdas.script_generator.generate_reel_script') as mock_reel, \
              patch('lambdas.script_generator.score_hook') as mock_score:
@@ -96,6 +106,7 @@ def main():
             mock_extract.return_value = mock_style_dna()
             mock_embed.return_value = mock_embedding()
             mock_match.return_value = {'relevance_score': 0.8, 'is_relevant': True}
+            mock_traj.return_value = mock_predict_trajectory()
             mock_yt.return_value = mock_youtube_script()
             mock_reel.return_value = mock_reel_script()
             mock_score.return_value = mock_hook_score()
@@ -241,7 +252,7 @@ def main():
             # ====================================================================
             print("\n\nTEST 5: COMPLETE WORKFLOW (BOTH FORMATS)")
             print("-" * 80)
-            print("Full journey: Content → Profile → Analyze → Generate Both Scripts...")
+            print("Full journey: Content -> Profile -> Analyze -> Generate Both Scripts...")
             
             # New creator for this test
             creator_id_2 = 'new_creator_e2e_002'

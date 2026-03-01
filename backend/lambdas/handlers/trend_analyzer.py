@@ -12,6 +12,41 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from lambdas.embeddings import match_trend_to_creator, generate_embedding
 from lambdas.db.dynamo_client import get_all_trends
+from lambdas.bedrock_client import call_claude
+
+
+def predict_trend_trajectory(trend_title, trend_description, niche):
+    """
+    Use Claude to forecast if a trend is 'Rising', 'Peaking', or 'Falling' in a specific niche.
+    Returns the trajectory and a novelty_score (1-100).
+    """
+    try:
+        prompt = f"""You are an advanced AI Trend Forecaster for the '{niche}' creator economy. 
+
+TREND: "{trend_title}"
+CONTEXT: "{trend_description}"
+
+TASK: Analyze this trend's current lifecycle stage and predict its trajectory.
+1. Is this trend 'Rising' (early adoption, high novelty), 'Peaking' (mainstream, high competition), or 'Falling' (oversaturated, declining)?
+2. Give it a novelty/freshness score from 1-100 (where 100 is completely untapped and fresh, 1 is overdone).
+
+Respond ONLY with a JSON object in exactly this format:
+{{
+    "trajectory": "Rising",
+    "novelty_score": 85,
+    "forecast_reason": "Brief 1-sentence explanation of why it's at this stage."
+}}"""
+        
+        response_text = call_claude(prompt, max_tokens=300)
+        result = json.loads(response_text)
+        return {
+            'trajectory': result.get('trajectory', 'Rising'),
+            'novelty_score': result.get('novelty_score', 50),
+            'forecast_reason': result.get('forecast_reason', '')
+        }
+    except Exception as e:
+        print(f"Trend prediction failed: {e}")
+        return {'trajectory': 'Unknown', 'novelty_score': 50, 'forecast_reason': 'Could not forecast.'}
 
 
 def lambda_handler(event, context):
@@ -118,22 +153,31 @@ def lambda_handler(event, context):
             
             relevance_score = match_result.get('relevance_score', 0)
             
-            # Placeholder novelty score (to be calculated from trend data in Phase 3)
-            novelty_score = 0.5
-            
             ranked_trends.append({
                 'trendId': trend_id,
                 'title': title,
                 'description': description,
-                'relevance_score': relevance_score,
-                'novelty_score': novelty_score
+                'relevance_score': relevance_score
             })
         
         # Sort by relevance score (descending)
         ranked_trends.sort(key=lambda x: x['relevance_score'], reverse=True)
         
-        # Take top 5
+        # Take top 5 and calculate AI Novelty for the best matches to save API tokens
         top_trends = ranked_trends[:5]
+        
+        # Assuming the creator has a valid niche we can extract, or default 'Creator Economy'
+        creator_niche = 'Creator Economy' # We would ideally pull this from DB profile in production
+        
+        for trend in top_trends:
+            forecast = predict_trend_trajectory(
+                trend['title'], 
+                trend['description'], 
+                creator_niche
+            )
+            trend['trajectory'] = forecast['trajectory']
+            trend['novelty_score'] = forecast['novelty_score']
+            trend['forecast_reason'] = forecast['forecast_reason']
         
         # Return success
         return {
@@ -151,6 +195,9 @@ def lambda_handler(event, context):
         }
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"ERROR OUT: {e}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': f'Trend analysis failed: {str(e)}'})
@@ -160,6 +207,9 @@ def lambda_handler(event, context):
 if __name__ == "__main__":
     # Local test
     import random
+    
+    # Needs to be mocked or relies on AWS credentials which are currently quarantined
+    os.environ['MOCK_MODE'] = 'true'
     
     test_embedding = [random.uniform(0, 1) for _ in range(1536)]
     
@@ -193,3 +243,5 @@ if __name__ == "__main__":
     print(f"Top Trends Found: {len(body.get('ranked_trends', []))}")
     for trend in body.get('ranked_trends', [])[:3]:
         print(f"  - {trend['title']}: {trend['relevance_score']:.3f} relevance")
+        print(f"    AI FORECAST: {trend.get('trajectory', 'Unknown')} (Novelty: {trend.get('novelty_score', 0)})")
+        print(f"    Reason: {trend.get('forecast_reason', '')}")
