@@ -1,0 +1,3 @@
+"""
+TrendScribe Test Suite
+"""
