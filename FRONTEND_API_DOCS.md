@@ -89,8 +89,7 @@ Uploads text/transcript from a creator to extract their unique "Style DNA" and s
 ```json
 {
   "userId": "creator_123",
-  "contentId": "video_transcript_001",
-  "text": "Hey guys, honestly the future of AI is crazy. You need to build your stack today. If you're missing out, you're losing money!"
+  "content_text": "Hey guys, honestly the future of AI is crazy. You need to build your stack today. If you're missing out, you're losing money!"
 }
 ```
 
@@ -120,12 +119,15 @@ Fetches trending topics and ranks them against the Creator's specific Style DNA.
 ```json
 {
   "userId": "creator_123",
-  "trends": [
+  "creator_embedding": [0.12, -0.45, 0.88, "... (1536 float values) ..."],
+  "trends_list": [
     {
+      "trendId": "trend_genai_1",
       "title": "Generative AI Agents",
       "description": "Autonomous AI systems that execute complex tasks."
     },
     {
+      "trendId": "trend_baking_2",
       "title": "Baking Sourdough Bread",
       "description": "Techniques for high hydration sourdough."
     }
