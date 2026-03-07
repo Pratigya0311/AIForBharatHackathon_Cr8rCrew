@@ -1,14 +1,15 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 
 import { Home, FolderOpen, TrendingUp, FileText, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
-const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
+const Sidebar = ({ collapsed, onToggleCollapse }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'content', label: 'Content Library', icon: FolderOpen },
-    { id: 'trends', label: 'Trending Topics', icon: TrendingUp },
-    { id: 'scripts', label: 'My Scripts', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { path: '/', label: 'Dashboard', icon: Home, end: true },
+    { path: '/content', label: 'Content Library', icon: FolderOpen },
+    { path: '/trends', label: 'Trending Topics', icon: TrendingUp },
+    { path: '/scripts', label: 'My Scripts', icon: FileText },
+    { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (
@@ -27,15 +28,16 @@ const Sidebar = ({ currentPage, onNavigate, collapsed, onToggleCollapse }) => {
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
-            <button
-              key={item.id}
-              className={`sidebar-item ${currentPage === item.id ? 'active' : ''}`}
-              onClick={() => onNavigate(item.id)}
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.end}
+              className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
               title={item.label}
             >
               <Icon className="sidebar-icon" size={20} strokeWidth={2} />
               {!collapsed && <span className="sidebar-label">{item.label}</span>}
-            </button>
+            </NavLink>
           );
         })}
       </nav>

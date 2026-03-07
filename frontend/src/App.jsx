@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import './styles/globals.css';
 import Header from './components/Common/Header';
 import Sidebar from './components/Common/Sidebar';
@@ -12,25 +13,7 @@ import ScriptsPage from './pages/scripts';
 import SettingsPage from './pages/settings';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'content':
-        return <ContentPage />;
-      case 'trends':
-        return <TrendsPage />;
-      case 'scripts':
-        return <ScriptsPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <Dashboard />;
-    }
-  };
 
   return (
     <ErrorBoundary>
@@ -38,13 +21,18 @@ export default function App() {
         <Header />
         <div className="app-container">
           <Sidebar 
-            currentPage={currentPage} 
-            onNavigate={setCurrentPage}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
           <main className="main-content">
-            {renderPage()}
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/content" element={<ContentPage />} />
+              <Route path="/trends" element={<TrendsPage />} />
+              <Route path="/scripts" element={<ScriptsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </main>
         </div>
       </div>

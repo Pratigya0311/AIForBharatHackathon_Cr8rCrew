@@ -1,9 +1,35 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import Editor from '../components/ScriptEditor/Editor';
 import { mockScripts } from '../data/mockData';
 
 const ScriptsPage = () => {
-  const [selectedScript, setSelectedScript] = useState(mockScripts[0]);
+  const location = useLocation();
+  const selectedTrend = location.state?.selectedTrend || null;
+
+  const scripts = useMemo(() => {
+    if (!selectedTrend) return mockScripts;
+
+    const trendBasedScript = {
+      ...mockScripts[0],
+      scriptId: `trend-${selectedTrend.trendId}`,
+      title: `Script Draft - ${selectedTrend.title}`,
+      status: 'draft',
+    };
+
+    return [trendBasedScript, ...mockScripts];
+  }, [selectedTrend]);
+
+  const [selectedScript, setSelectedScript] = useState(() =>
+    selectedTrend
+      ? {
+          ...mockScripts[0],
+          scriptId: `trend-${selectedTrend.trendId}`,
+          title: `Script Draft - ${selectedTrend.title}`,
+          status: 'draft',
+        }
+      : mockScripts[0]
+  );
 
   const handleScriptChange = (updatedScript) => {
     setSelectedScript(updatedScript);
@@ -12,8 +38,13 @@ const ScriptsPage = () => {
   return (
     <div className="scripts-page">
       <h1>My Scripts</h1>
+      {selectedTrend && (
+        <p className="scripts-subtitle">
+          Generated from trend: <strong>{selectedTrend.title}</strong>
+        </p>
+      )}
       <div className="scripts-list">
-        {mockScripts.map((script) => (
+        {scripts.map((script) => (
           <div
             key={script.scriptId}
             className={`script-item ${selectedScript.scriptId === script.scriptId ? 'active' : ''}`}
